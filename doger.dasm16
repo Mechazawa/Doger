@@ -1,0 +1,306 @@
+;loops stored at 0x3000
+;score stored at 0x3001
+;ship texture stored at 0x3002
+;astroid texture stored at 0x3003
+;sleepCounter is stored at 0x3004
+
+:start
+     set [0x9000], 0
+     set a, 0
+     set b, 0
+     set x, 0
+     set y, 0
+     set z, 0
+     set i, 0
+     set j, 0
+     set c, 0x80E0
+     set [0x3002], 0xF03E
+     set [c], [0x3002]
+     set [0x3000], 1
+     set [0x3001], 0
+     set [0x3003], 0xf007
+     set [0x3004], 0xffff
+     set pc, drawbar
+
+:sleep
+     sub [0x3004], 1
+     set PC, loop_1
+
+:loop_1
+     ifn [0x3004], 0
+         set PC, sleep
+     set a, [0x3000]
+     add a, 1
+     set [0x3000], a
+     mod a, 0x04FF ;scoreAddTimeout
+     ife a, 0x0000
+         set PC, addscore
+:loop_1_2
+     add [0x3000], 1
+     set a, [0x3000]
+     mod a, 0x00FF ;movetimeout
+     ife a, 1
+         set PC, loop_2
+     set PC, loop_5
+:loop_2
+     set x, 31
+     add x, 0x8000
+:loop_3
+     add x, 1
+     ife [x], [0x3003]
+         set PC, moveAstroid
+:loop_4
+     ifn x, 0x8200
+         set PC, loop_3
+:loop_5
+     set a, [0x9000]
+     set [0x9000], 0x0000
+     ife a, 0x0001
+         set PC, left
+     ife a, 0x0004
+         set PC, down
+     ife a, 0x0002
+         set PC, right
+     ife a, 0x0003
+         set PC, up
+:loop_6
+     set a, [0x3000]
+     mod a, 0x00FF ;placetimeou
+     ife a, 0
+         set PC, placeAstroid
+     set PC, loop_1
+
+:moveAstroid
+     set [x], 0x0000
+     set y, x
+     sub x, 1
+     ife [x], [0x3002]
+         set PC, crash
+     sub y, 0x800
+     mod y, 32
+     ife y, 0
+         set PC, loop_4
+     set [x], [0x3003]
+     set PC, loop_4
+
+:addscore
+     add [0x3001], 1
+     set PC, drawScore
+     set PC, loop_1_2
+
+:left
+     set x, c
+     sub x, 0x800
+     mod x, 32
+     ife x, 0
+         set PC, loop_6
+     set [c], 0x0000
+     sub c, 1
+     ife [c], [0x3003]
+         set PC, crash
+     set [c], [0x3002]
+     set PC, loop_6
+
+:right
+     set x, c
+     sub x, 0x800
+     mod x, 32
+     ife x, 31
+         set PC, loop_6
+     set [c], 0x0000
+     add c, 1
+     ife [c], [0x3003]
+         set PC, crash
+     set [c], [0x3002]
+     set PC, loop_6
+
+:up
+     ifg 0x8040, c
+         set PC, loop_6
+     set [c], 0x0000
+     sub c, 32
+     ife [c], [0x3003]
+         set PC, crash
+     set [c], [0x3002]
+     set PC, loop_6
+
+:down
+     ifg c, 0x81BF
+         set PC, loop_6
+     set [c], 0x0000
+     add c, 32
+     ife [c], [0x3003]
+         set PC, crash
+     set [c], [0x3002]
+     set PC, loop_6
+
+:drawbar
+     set x, 0x8000
+     set y, 0x8000
+     add y, 480
+     set z, 61
+     bor z, 0xf001
+:drawbarloop
+     set [y], z
+     set [x], z
+     add x, 1
+     add y, 1
+     ifn x, 0x8020
+         set PC, drawbarloop
+     set x, 0
+     set y, 0
+     set z, 0
+     set PC, drawScoreText
+
+:placeAstroid
+     set a, [seed]
+     mul a, 0x1235
+     add a, 1
+     add a, c
+     div a, 4
+     set [seed], a
+     mul a, 7
+     mul a, 17
+     add a, 0x72da
+     mod a, 14
+     add a, 2
+     mul a, 32
+     add a, 0x8000
+     sub a, 1
+     add [seed], 0x03FA
+     mod [seed], a
+     ;div [seed], 2
+     set [a], [0x3003]
+     set PC, loop_1
+
+:seed dat 0x02ba
+
+:drawScoreText
+    ife (scoreText+a), 0
+        set PC, loop_1
+    set b, (scoreText+a)
+    add a, 0x8000
+    bor b, 0xf000
+    set [a], b
+    sub a, 0x8000
+    add a, 1
+    set PC, drawScoreText
+
+:drawScore
+    set b, 0x800c
+    set x, [0x3001]
+:drawScore2
+    set a,x
+    and a,15
+    ifg a,9
+        add a,7
+    add a,0x30
+    bor a,0xf000
+    set [b],a
+    sub b,1
+    shr x,4
+    ifn x,0
+        set PC, drawScore2
+    set PC, loop_1_2
+
+:clear
+    set a, 0x8000
+    set b, 0
+    set c, 0
+:clearLoop
+    set [a], 0
+    add a, 1
+    ife a, 0x8200
+        set PC, start
+    set PC, clearLoop
+
+:crash
+    set [x], 0xf02a
+    set b, 0
+    set PC, drawGameOver1
+
+:crashloop
+    ifn [0x9000], 0
+        set PC, clear
+    set PC, crashloop
+
+:drawGameOver1
+    set b, 0x80AA
+    set c, 0
+:drawGameOverLoop1
+    set a, (gameOverText+c)
+     ife a, 0
+        set PC, drawGameOver2
+    bor a, 0xf000
+    add c, 1
+    set [b], a
+    add b, 1
+    set PC, drawGameOverLoop1
+
+:drawGameOver2
+    set b, 0x80CA
+    set c, 0
+:drawGameOverLoop2
+    set a, (YouDiedText+c)
+    ife a, 0
+        set PC, drawGameOver3
+    bor a, 0xf000
+    add c, 1
+    set [b], a
+    add b, 1
+    set PC, drawGameOverLoop2
+
+:drawGameOver3
+    set b, 0x80EA
+    set c, 0
+:drawGameOverLoop3
+    set a, (scoreText+c)
+    ife a, 0
+        set PC, drawGameOver4
+    bor a, 0xf000
+    add c, 1
+    set [b], a
+    add b, 1
+    set PC, drawGameOverLoop3
+
+:drawGameOver4
+    set b, 0x80EA
+    add b, 32
+    set c, 0
+:drawGameOverLoop4
+    set a, (PressAnyKeyText+c)
+    ife a, 0
+        set PC, drawScoreAtGameOver
+    bor a, 0xf000
+    add c, 1
+    set [b], a
+    add b, 1
+    set PC, drawGameOverLoop4
+
+:drawScoreAtGameOver
+    set b, 0x80EA
+    add b, 12
+    set x, [0x3001]
+    set [0x9000], 0
+:drawScoreAtGameOver2
+    set a,x
+    and a,15
+    ifg a,9
+        add a,7
+    add a,0x30
+    bor a,0xf000
+    set [b],a
+    sub b,1
+    shr x,4
+    ifn x,0
+        set PC, drawScoreAtGameOver2
+    set PC, crashloop
+
+:scoreText
+    dat "SCORE: 0x0000",0
+:gameOverText
+    dat "GAME OVER",0
+:YouDiedText
+    dat "YOU DIED",0
+:PressAnyKeyText
+    dat "Press any key",0
